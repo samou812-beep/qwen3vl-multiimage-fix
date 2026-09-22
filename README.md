@@ -108,28 +108,45 @@ No GPU or vLLM needed to verify this — `transformers.AutoProcessor` +
 `PIL` is sufficient, since the bug and fix are both entirely at the
 tokenizer/processor level, before anything reaches the model itself.
 
-## Deployment options (not yet decided/applied to the running model)
+## Deployment
 
-1. **Patch the checkpoint's `tokenizer.json` directly** — simplest,
-   permanent, no code changes anywhere. Downside: local-only edit to our
-   copy of the model files; would need to be reapplied if the model is
-   ever re-downloaded/updated from upstream.
+**Applied**: option 1 (patch `tokenizer.json` directly) was applied to the
+running model on 2026-09-22. Original backed up automatically to
+`tokenizer.json.bak` alongside it (via `patch/fix_tokenizer_truncation.py`,
+which always backs up before writing) before the edit.
+
+vLLM was restarted to pick up the change (tokenizer is loaded once at
+server startup, so a running server needs a restart regardless of which
+deployment option is used). Verified against the live, restarted instance
+with real HTTP requests, not just the offline repro:
+
+- **2-image request** (the original failure case): `HTTP 200`, correct
+  content (model correctly distinguished a red image from a blue one and
+  identified which was redder).
+- **Single-image request**: `HTTP 200`, unaffected — no regression.
+- **Plain text request**: `HTTP 200`, unaffected, `reasoning_effort`
+  default still applies correctly — no regression.
+
+Options not taken, kept for reference:
+
 2. **Runtime override in application code** — before constructing any
    multi-image request, do the equivalent of
-   `processor.tokenizer.init_kwargs.pop("max_length", None)` (or the
-   vLLM-side equivalent, if one exists for passing tokenizer kwargs at
-   server startup). Doesn't touch model files, but has to be applied
-   correctly on every process that loads this tokenizer.
+   `processor.tokenizer.init_kwargs.pop("max_length", None)`. Doesn't
+   touch model files, but has to be applied correctly on every process
+   that loads this tokenizer — more moving parts than a one-time file fix
+   for a single-instance deployment like this one.
 3. **Report upstream** to whoever maintains this NVFP4 build (the model's
    own README points at `orcarouter`/`Continuum-AI-Corp`) — this is a
    packaging defect in their released checkpoint, not something specific
    to our deployment; other users of this exact checkpoint would hit it
-   too.
+   too. Worth doing regardless of the local fix already being applied,
+   since it doesn't help anyone else running this checkpoint.
 
 ## Status
 
 - [x] Root cause isolated and confirmed via direct instrumentation
-- [x] Fix written and verified (fixes 2-image and 5-image cases, doesn't
-      regress single-image)
-- [ ] Decide which deployment option above to use, and whether to apply
-      it to the actual running model
+- [x] Fix written and verified offline (fixes 2-image and 5-image cases,
+      doesn't regress single-image)
+- [x] Applied to the running model, vLLM restarted, verified live against
+      the real API (2-image, single-image, and plain-text all correct)
+- [ ] Consider reporting upstream to the checkpoint's maintainer
