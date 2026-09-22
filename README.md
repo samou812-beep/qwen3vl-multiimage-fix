@@ -135,12 +135,15 @@ Options not taken, kept for reference:
    touch model files, but has to be applied correctly on every process
    that loads this tokenizer — more moving parts than a one-time file fix
    for a single-instance deployment like this one.
-3. **Report upstream** to whoever maintains this NVFP4 build (the model's
-   own README points at `orcarouter`/`Continuum-AI-Corp`) — this is a
-   packaging defect in their released checkpoint, not something specific
-   to our deployment; other users of this exact checkpoint would hit it
-   too. Worth doing regardless of the local fix already being applied,
-   since it doesn't help anyone else running this checkpoint.
+3. **Reported upstream**, 2026-09-22 —
+   [orcarouter/Qwen3.8-27B-Uncensored-NVFP4, discussion #6](https://huggingface.co/orcarouter/Qwen3.8-27B-Uncensored-NVFP4/discussions/6).
+   That thread already had an open, maintainer-acknowledged report
+   ("gives me image problems under 60k tokens... will deep into it") that
+   this root cause almost certainly explains — a different, deeper case
+   than the simple image-count/placeholder mismatch the maintainer had
+   already correctly diagnosed for the thread's original report. Posted
+   as a follow-up there rather than a new discussion, with a link back to
+   this repo for the full reproduction/fix.
 
 ## Status
 
@@ -149,4 +152,4 @@ Options not taken, kept for reference:
       doesn't regress single-image)
 - [x] Applied to the running model, vLLM restarted, verified live against
       the real API (2-image, single-image, and plain-text all correct)
-- [ ] Consider reporting upstream to the checkpoint's maintainer
+- [x] Reported upstream to the checkpoint's maintainer
